@@ -12,6 +12,7 @@
  */
 package com.meda.client.app;
 
+import com.meda.client.services.DeleteAppointment;
 import com.meda.client.services.GetAppointmentDetails;
 import com.meda.model.dto.AppointmentDetails;
 import hms.kite.samples.api.StatusCodes;
@@ -48,19 +49,18 @@ public class SimpleClient implements MoSmsListener {
             SmsRequestSender smsMtSender = new SmsRequestSender(new URL("http://localhost:7000/sms/send"));
             String[] messageContent = moSmsReq.getMessage().split(" ");
             if (messageContent.length == 1) {
-                   mtSmsReq.setMessage("Invalid Format. Please resend the message as ' med <action> <appointment code> '. " +
-                           "This is a message delivered from the medic app by I.D Ranaweera - USJP - AS2009500");
+                mtSmsReq.setMessage("Invalid Format. Please resend the message as ' med <action> <appointment code> '. " +
+                        "This is a message delivered from the medic app by I.D Ranaweera - USJP - AS2009500");
 
-            }else if(messageContent.length == 2 && messageContent[1].equals("help")){
+            } else if (messageContent.length == 2 && messageContent[1].equals("help")) {
                 mtSmsReq.setMessage("Type ' med view <appointment code> ' to view your registered appointments. \n " +
                         "Type ' med change <appointment code> ' to change request to change your appointment to next clinic date. \n" +
                         "Type ' med cancel <appointment code> ' to cancel your appointment");
 
-            }else if(messageContent.length == 2 && !messageContent[1].equals("help")){
+            } else if (messageContent.length == 2 && !messageContent[1].equals("help")) {
                 mtSmsReq.setMessage("Invalid Format. Please resend the message as ' med <action> <appointment code> '. " +
                         "This is a message delivered from the medic app by I.D Ranaweera - USJP - AS2009500");
-            }
-            else {
+            } else {
 
                 action = messageContent[1];
                 appointmentCode = messageContent[2];
@@ -69,7 +69,7 @@ public class SimpleClient implements MoSmsListener {
 
             }
             mtSmsReq.setApplicationId(moSmsReq.getApplicationId());
-           mtSmsReq.setSourceAddress("MEDIC");// default sender address or aliases
+            mtSmsReq.setSourceAddress("MEDIC");// default sender address or aliases
             mtSmsReq.setPassword("96f00de1f3501e429a35bd5e58fec963");
 
             mtSmsReq.setVersion(moSmsReq.getVersion());
@@ -87,7 +87,6 @@ public class SimpleClient implements MoSmsListener {
             }
 
 
-
         } catch (Exception e) {
             LOGGER.log(Level.INFO, "Unexpected error occurred", e);
         }
@@ -96,8 +95,8 @@ public class SimpleClient implements MoSmsListener {
     private MtSmsReq createSimpleMtSms() {
 
         MtSmsReq mtSmsReq = new MtSmsReq();
-        if(action.equals("view")){
-            AppointmentDetails appointmentDetails = new GetAppointmentDetails().getAppoinmentDetails(appointmentCode);
+        if (action.equals("view")) {
+            AppointmentDetails appointmentDetails = new GetAppointmentDetails().getAppointmentDetails(appointmentCode);
 
             if (appointmentDetails != null) {
                 mtSmsReq.setMessage(formatText(appointmentDetails));
@@ -105,10 +104,20 @@ public class SimpleClient implements MoSmsListener {
                 mtSmsReq.setMessage("Invalid appointment code. Please check the code and resend. Type ' med help ' for instructions " +
                         "This is a message delivered from the medic app by I.D Ranaweera - USJP - AS2009500 ");
             }
-        }else if(action.equals("cancel")){
+        } else if (action.equals("cancel")) {
+            DeleteAppointment deleteAppointment = new DeleteAppointment();
 
-        }
-        else{
+            LOGGER.log(Level.INFO,"Executing deleting appoinment details");
+            AppointmentDetails appointmentDetails = deleteAppointment.deleteAppointment(appointmentCode);
+
+                if(appointmentDetails != null){
+                     mtSmsReq.setMessage("Dear "+appointmentDetails.getpName()+", your appointment to Dr."+appointmentDetails.getdName()+" " +
+                             " on "+appointmentDetails.getAppointmentDate()+" for the "+appointmentDetails.getClinicType()+" clinic has been cancelled. " +
+                             "This is a message delivered from the medic app by I.D Ranaweera - USJP - AS2009500");
+                }else {
+                    mtSmsReq.setMessage("You are not registered to any clinic");
+                }
+        } else {
             mtSmsReq.setMessage("Invalid action. Please check the action and resend. Type ' med help ' for instructions. " +
                     "This is a message delivered from the medic app by I.D Ranaweera - USJP - AS2009500 ");
         }
@@ -116,7 +125,7 @@ public class SimpleClient implements MoSmsListener {
     }
 
     public String formatText(AppointmentDetails appointmentDetails) {
-        String text = "Dear " + appointmentDetails.getpName() + ", your appointment to " + appointmentDetails.getdName() +
+        String text = "Dear " + appointmentDetails.getpName() + ", your appointment to Dr." + appointmentDetails.getdName() +
                 " for the " + appointmentDetails.getClinicType() + " clinic has been scheduled on " + appointmentDetails.getAppointmentDate() +
                 ". This is a message delivered from the medic app by I.D Ranaweera - USJP - AS2009500";
         return text;

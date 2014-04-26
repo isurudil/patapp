@@ -19,9 +19,10 @@ public class GetAppointmentDetails {
     AppointmentDetails appointmentDetails;
     String details;
 
-    public AppointmentDetails getAppoinmentDetails(String appCode){
+    public AppointmentDetails getAppointmentDetails(String appCode){
         Gson gson = new Gson();
         Query searchUserQuery = new Query(Criteria.where("appointmentCode").is(appCode));
+
         LOGGER.debug("Getting patient details : " + appCode);
 
         try{
