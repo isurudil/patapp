@@ -14,9 +14,11 @@ package com.meda.client.app;
 
 import com.meda.client.services.DeleteAppointment;
 import com.meda.client.services.GetAppointmentDetails;
+import com.meda.client.services.InsertDoctorSourceAddress;
 import com.meda.client.services.InsertPatientSourceAddress;
 import com.meda.model.dto.AppointmentDetails;
-import com.meda.model.dto.RegistrationDetails;
+import com.meda.model.dto.DoctorRegistrationDetails;
+import com.meda.model.dto.PatientRegistrationDetails;
 import hms.kite.samples.api.StatusCodes;
 import hms.kite.samples.api.sms.MoSmsListener;
 import hms.kite.samples.api.sms.SmsRequestSender;
@@ -36,6 +38,7 @@ public class SimpleClient implements MoSmsListener {
     private final static Logger LOGGER = Logger.getLogger(SimpleClient.class.getName());
     String action;
     String appointmentCode;
+    String doctorCode;
 
     @Override
     public void init(ServletConfig servletConfig) {
@@ -66,6 +69,9 @@ public class SimpleClient implements MoSmsListener {
 
                 action = messageContent[1];
                 appointmentCode = messageContent[2];
+                if (messageContent.length == 4) {
+                    doctorCode = messageContent[3];
+                }
                 mtSmsReq = createSimpleMtSms(moSmsReq);
 
 
@@ -101,7 +107,7 @@ public class SimpleClient implements MoSmsListener {
             AppointmentDetails appointmentDetails = new GetAppointmentDetails().getAppointmentDetails(appointmentCode);
 
             if (appointmentDetails != null) {
-                mtSmsReq.setMessage(formatText(appointmentDetails));
+                mtSmsReq.setMessage(getSchdleSuccessMsg(appointmentDetails));
             } else {
                 mtSmsReq.setMessage(" There are no appointments registered with this appointment code " +
                         "-- A project by I.D Ranaweera - USJP - AS2009500 ");
@@ -109,39 +115,75 @@ public class SimpleClient implements MoSmsListener {
         } else if (action.equals("cancel")) {
             DeleteAppointment deleteAppointment = new DeleteAppointment();
 
-            LOGGER.log(Level.INFO,"Executing deleting appoinment details");
+            LOGGER.log(Level.INFO, "Executing deleting appoinment details");
             AppointmentDetails appointmentDetails = deleteAppointment.deleteAppointment(appointmentCode);
 
-                if(appointmentDetails != null){
-                     mtSmsReq.setMessage("Dear "+appointmentDetails.getpName()+", your appointment to Dr."+appointmentDetails.getdName()+" " +
-                             " on "+appointmentDetails.getAppointmentDate()+" for the "+appointmentDetails.getClinicType()+" clinic has been cancelled. " +
-                             "-- A project by I.D Ranaweera - USJP - AS2009500");
-                }else {
-                    mtSmsReq.setMessage("You are not registered to any clinic. -- A project by I.D Ranaweera - USJP - AS2009500 ");
-                }
-        }else if(action.equals("change")){
-            RegistrationDetails registrationDetails = new InsertPatientSourceAddress().insertPatientDestination(moSmsReq,appointmentCode);
-            if(registrationDetails != null){
+            if (appointmentDetails != null) {
+                mtSmsReq.setMessage(getCnclSuccessMsg(appointmentDetails));
+            } else {
+                mtSmsReq.setMessage("You are not registered to any clinic. -- A project by I.D Ranaweera - USJP - AS2009500 ");
+            }
+        } else if (action.equals("change")) {
+            //Returns the updated document
+            PatientRegistrationDetails patientRegistrationDetails = new InsertPatientSourceAddress().insertPatientDestination(moSmsReq, appointmentCode);
+            if (patientRegistrationDetails != null) {
+
                 AppointmentDetails appointmentDetails = new GetAppointmentDetails().getAppointmentDetails(appointmentCode);
-                mtSmsReq.setMessage("Dear "+appointmentDetails.getpName()+", Your request to change the appointment date for the " +
-                        " "+appointmentDetails.getClinicType()+" clinic of Dr."+appointmentDetails.getdName()+" on "+appointmentDetails.getAppointmentDate() +
-                        " is sent for the approval. Please await ... -- A project by I.D Ranaweera - USJP - AS2009500 ");
-            }else {
+                mtSmsReq.setMessage(getChngReqSuccessMsg(appointmentDetails));
+
+            } else {
                 mtSmsReq.setMessage("Your Doctor has not registered to the SMS service. -- A project by I.D Ranaweera - USJP - AS2009500  ");
             }
-        }
-        else {
+        } else if (action.equals("reg")) {
+            InsertDoctorSourceAddress insertDoctorSourceAddress = new InsertDoctorSourceAddress();
+
+            AppointmentDetails appointmentDetails;
+            appointmentDetails = new GetAppointmentDetails().getAppointmentDetails(appointmentCode);
+
+            if (appointmentDetails != null) {
+                DoctorRegistrationDetails doctorRegistrationDetails = insertDoctorSourceAddress.findDoctor(doctorCode);
+                insertDoctorSourceAddress.insertDoctorSource(moSmsReq,appointmentCode,doctorCode);
+                if (doctorRegistrationDetails != null) {
+                    mtSmsReq.setMessage(getRegSuccessMsg(doctorRegistrationDetails, appointmentDetails));
+                }else {
+                    mtSmsReq.setMessage("You are not registered with the system. -- A project by I.D Ranaweera - USJP - AS2009500");
+                }
+            } else {
+//                mtSmsReq.setMessage("You are not registered with this appointment. Please send" +
+//                        "' med reg <doctor code> <appointment code>' to register with the appointment -- A project by I.D Ranaweera - USJP - AS2009500");
+                mtSmsReq.setMessage("The appointment does not exist. Please check the appointment id.  -- A project by I.D Ranaweera - USJP - AS2009500");
+            }
+        } else {
             mtSmsReq.setMessage("Invalid action. Please check the action and resend. Type ' med help ' for instructions. " +
                     "-- A project by I.D Ranaweera - USJP - AS2009500 ");
         }
         return mtSmsReq;
     }
 
-    public String formatText(AppointmentDetails appointmentDetails) {
-        String text = "Dear " + appointmentDetails.getpName() + ", your appointment to Dr." + appointmentDetails.getdName() +
+    public String getSchdleSuccessMsg(AppointmentDetails appointmentDetails) {
+        String text = appointmentDetails.getTitle() + " " + appointmentDetails.getpName() + ", your appointment to Dr." + appointmentDetails.getdName() +
                 " for the " + appointmentDetails.getClinicType() + " clinic has been scheduled on " + appointmentDetails.getAppointmentDate() +
                 ". -- A project by I.D Ranaweera - USJP - AS2009500";
         return text;
+    }
+
+    public String getRegSuccessMsg(DoctorRegistrationDetails doctorRegistrationDetails, AppointmentDetails appointmentDetails) {
+
+        return "Dr." + doctorRegistrationDetails.getdName() + ", you have been successfully registered " +
+                "with the " + appointmentDetails.getClinicType() + "clinic appointment of " + appointmentDetails.getTitle() + "" + appointmentDetails.getpName() + " on "
+                + appointmentDetails.getAppointmentDate() + " -- A project by I.D Ranaweera - USJP - AS2009500 ";
+    }
+
+    public String getChngReqSuccessMsg(AppointmentDetails appointmentDetails) {
+        return appointmentDetails.getTitle() + " " + appointmentDetails.getpName() + ", Your request to change the appointment date for the " +
+                " " + appointmentDetails.getClinicType() + " clinic of Dr." + appointmentDetails.getdName() + " on " + appointmentDetails.getAppointmentDate() +
+                " is sent for the approval. Please await for the confirmation -- A project by I.D Ranaweera - USJP - AS2009500 ";
+    }
+
+    public String getCnclSuccessMsg(AppointmentDetails appointmentDetails) {
+        return appointmentDetails.getTitle() + " " + appointmentDetails.getpName() + ", your appointment to Dr." + appointmentDetails.getdName() + " " +
+                " on " + appointmentDetails.getAppointmentDate() + " for the " + appointmentDetails.getClinicType() + " clinic has been cancelled. " +
+                "-- A project by I.D Ranaweera - USJP - AS2009500";
     }
 
 

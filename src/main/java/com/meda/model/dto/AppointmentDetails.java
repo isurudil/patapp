@@ -16,6 +16,11 @@ public class AppointmentDetails {
     String clinicType;
     String dCode;
     String dName;
+    String title;
+
+    public String getTitle() {
+        return title;
+    }
 
     public String getAppointmentCode() {
         return appointmentCode;

@@ -3,7 +3,6 @@ package com.meda.client.services;
 import com.google.gson.Gson;
 import com.meda.model.dto.AppointmentDetails;
 import config.MongoContextLoader;
-import org.apache.log4j.Logger;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Component;
@@ -15,7 +14,7 @@ import org.springframework.stereotype.Component;
 public class GetAppointmentDetails {
 
     MongoContextLoader mongoContextLoader =   new MongoContextLoader();
-    private static final Logger LOGGER = Logger.getLogger(GetAppointmentDetails.class);
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(GetAppointmentDetails.class.getName());
     AppointmentDetails appointmentDetails;
     String details;
 
@@ -23,12 +22,12 @@ public class GetAppointmentDetails {
         Gson gson = new Gson();
         Query searchUserQuery = new Query(Criteria.where("_id").is(appCode));
 
-        LOGGER.debug("Getting patient details : " + appCode);
+        LOGGER.info("Getting patient details : " + appCode);
 
         try{
         appointmentDetails = mongoContextLoader.getMongoOperation().findOne(searchUserQuery,AppointmentDetails.class);
          details= gson.toJson(appointmentDetails);
-        LOGGER.debug("Got Details from DB : "+details);
+        LOGGER.info("Got Details from DB : "+details);
     }catch (Exception ex){
 
     }
