@@ -34,17 +34,17 @@ public class DeleteAppointment {
         String details;
 
         Gson gson = new Gson();
-        Query searchUserQuery = new Query(Criteria.where("appointmentCode").is(appCode));
+        Query searchUserQuery = new Query(Criteria.where("_id").is(appCode));
 
         LOGGER.debug("Getting patient details to Delete : " + appCode);
 
         try{
             MongoOperations mongoOperations = mongoContextLoader.getMongoOperation();
-            appointmentDetails = mongoOperations.findOne(searchUserQuery, AppointmentDetails.class);
+//            appointmentDetails = mongoOperations.findOne(searchUserQuery, AppointmentDetails.class);
+            appointmentDetails = mongoOperations.findAndRemove(searchUserQuery,AppointmentDetails.class);
             details= gson.toJson(appointmentDetails);
             LOGGER.info("Got Details from DB to Delete : " + details);
             returnObject = appointmentDetails;
-            mongoOperations.remove(appointmentDetails);
             isSuccess =true;
         }catch (Exception ex){
              isSuccess = false;

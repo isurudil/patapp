@@ -1,5 +1,6 @@
 package com.meda.model.dto;
 
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 /**
@@ -8,8 +9,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "patient_details")
 public class AppointmentDetails {
 
-    String pName;
+    @Id
     String appointmentCode;
+    String pName;
     String appointmentDate;
     String clinicType;
     String dCode;
