@@ -142,10 +142,10 @@ public class SimpleClient implements MoSmsListener {
 
             if (appointmentDetails != null) {
                 DoctorRegistrationDetails doctorRegistrationDetails = insertDoctorSourceAddress.findDoctor(doctorCode);
-                insertDoctorSourceAddress.insertDoctorSource(moSmsReq,appointmentCode,doctorCode);
                 if (doctorRegistrationDetails != null) {
+                    insertDoctorSourceAddress.insertDoctorSource(moSmsReq, appointmentCode, doctorCode);
                     mtSmsReq.setMessage(getRegSuccessMsg(doctorRegistrationDetails, appointmentDetails));
-                }else {
+                } else {
                     mtSmsReq.setMessage("You are not registered with the system. -- A project by I.D Ranaweera - USJP - AS2009500");
                 }
             } else {
@@ -170,7 +170,7 @@ public class SimpleClient implements MoSmsListener {
     public String getRegSuccessMsg(DoctorRegistrationDetails doctorRegistrationDetails, AppointmentDetails appointmentDetails) {
 
         return "Dr." + doctorRegistrationDetails.getdName() + ", you have been successfully registered " +
-                "with the " + appointmentDetails.getClinicType() + "clinic appointment of " + appointmentDetails.getTitle() + "" + appointmentDetails.getpName() + " on "
+                "with the " + appointmentDetails.getClinicType() + " clinic appointment of " + appointmentDetails.getTitle() + "" + appointmentDetails.getpName() + " on "
                 + appointmentDetails.getAppointmentDate() + " -- A project by I.D Ranaweera - USJP - AS2009500 ";
     }
 

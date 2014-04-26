@@ -23,25 +23,26 @@ public class InsertDoctorSourceAddress {
     private static final Logger LOGGER = Logger.getLogger(InsertDoctorSourceAddress.class.getName());
     MongoContextLoader mongoContextLoader =   new MongoContextLoader();
 
-    public DoctorRegistrationDetails insertDoctorSource(MoSmsReq moSmsReq,String appCode,String dCode){
+    public PatientRegistrationDetails insertDoctorSource(MoSmsReq moSmsReq,String appCode,String dCode){
 
         Query updatePatientDetailsQuery = new Query(Criteria.where("_id").is(appCode));
-        DoctorRegistrationDetails doctorRegistrationDetails = null;
+        PatientRegistrationDetails patientRegistrationDetails = null;
         try{
             MongoOperations mongoOperations = mongoContextLoader.getMongoOperation();
             Update update = new Update();
-            doctorRegistrationDetails = mongoOperations.findOne(updatePatientDetailsQuery,DoctorRegistrationDetails.class);
-            if(doctorRegistrationDetails != null){
+            patientRegistrationDetails = mongoOperations.findOne(updatePatientDetailsQuery,PatientRegistrationDetails.class);
+            if(patientRegistrationDetails != null){
                 mongoOperations.updateFirst(updatePatientDetailsQuery,update.set("dDestination",moSmsReq.getSourceAddress()),PatientRegistrationDetails.class);
+                mongoOperations.updateFirst(updatePatientDetailsQuery,update.set("dCode",dCode),PatientRegistrationDetails.class);
             }
-            details= gson.toJson(doctorRegistrationDetails);
+            details= gson.toJson(patientRegistrationDetails);
             LOGGER.info("Got Details from DB After Updating  : " + details);
 
         }catch (Exception ex){
             ex.printStackTrace();
         }
 
-        return doctorRegistrationDetails;
+        return patientRegistrationDetails;
     }
     public DoctorRegistrationDetails findDoctor(String dCode) {
 
@@ -57,7 +58,7 @@ public class InsertDoctorSourceAddress {
             e.printStackTrace();
         }
         details= gson.toJson(doctorRegistrationDetails);
-        LOGGER.info("Got Details from DB After Updating Doctor Info  : " + details);
+        LOGGER.info("Got Details from Doctor Info  : " + details);
         return  doctorRegistrationDetails;
 
     }
