@@ -132,19 +132,28 @@ public class SimpleClient implements MoSmsListener {
             getAppointmentDetails.setAppCode(appointmentCode);
             AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
             if (appointmentDetails != null) {
-                // updates the patient_registration document with current source address. If the doc does not has the record returns null
-                PatientRegistrationDetails patientRegistrationDetails = new InsertPatientSourceAddress().insertPatientDestination(moSmsReq, appointmentCode);
-                if (patientRegistrationDetails != null) {
-                    appointmentDetails = updateAppointment.updateAppointmentStatus();
-                    getAppointmentDetails.setAppCode(appointmentCode);
-                    mtSmsReq.setMessage(MessageExchanger.getChngReqSuccessMsg(appointmentDetails));
-                    fireReqMsgForDoc(smsMtSender, patientRegistrationDetails, appointmentDetails);
+                if (appointmentDetails.getStatus().equalsIgnoreCase(AppointmentStatus.PENDING_RESCHEDULE.name())) {
 
+                    mtSmsReq.setMessage(MessageExchanger.reschldPending(appointmentDetails));
 
+                } else if (appointmentDetails.getStatus().equalsIgnoreCase(AppointmentStatus.NO_RESCHEDULE.name())) {
+                    mtSmsReq.setMessage(MessageExchanger.reschdlFailed(appointmentDetails));
                 } else {
-                    // response null means it does not have a record. A record is created when a doctor register to an existing appointment
-                    mtSmsReq.setMessage(MessageExchanger.getDocNotRegforPatient());
+                    // updates the patient_registration document with current source address. If the doc does not has the record returns null
+                    PatientRegistrationDetails patientRegistrationDetails = new InsertPatientSourceAddress().insertPatientDestination(moSmsReq, appointmentCode);
+                    if (patientRegistrationDetails != null) {
+                        appointmentDetails = updateAppointment.updateAppointmentStatus();
+                        getAppointmentDetails.setAppCode(appointmentCode);
+                        mtSmsReq.setMessage(MessageExchanger.getChngReqSuccessMsg(appointmentDetails));
+                        fireReqMsgForDoc(smsMtSender, patientRegistrationDetails, appointmentDetails);
+
+
+                    } else {
+                        // response null means it does not have a record. A record is created when a doctor register to an existing appointment
+                        mtSmsReq.setMessage(MessageExchanger.getDocNotRegforPatient());
+                    }
                 }
+
             } else {
                 mtSmsReq.setMessage(MessageExchanger.getAppointmntNotExixtMsg());
             }
@@ -178,32 +187,38 @@ public class SimpleClient implements MoSmsListener {
                 LOGGER.info("Doc registered ");
                 AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
                 if (appointmentDetails != null) { // Appointment Exists
-                    GetPatientRegistrationDetails getPatientRegistrationDetails = new GetPatientRegistrationDetails(appointmentCode);
-                    PatientRegistrationDetails patientRegistrationDetails = getPatientRegistrationDetails.getRegistrationDetails();
+                    GetPatientRegistrationDetails getPatientRegistrationDetails = new GetPatientRegistrationDetails(appointmentCode, doctorCode);
+                    PatientRegistrationDetails patientRegistrationDetails = getPatientRegistrationDetails.getRegistrationDetailsByAppCodeAndDCode();
                     LOGGER.info("App exists");
                     if (patientRegistrationDetails != null) {
                         LOGGER.info("doctor ref to appmnt");
-                        // Doctor has registered to the appointment
-                        if (appointmentDetails.getStatus().equals(AppointmentStatus.PENDING_RESCHEDULE.name())) { // appointment is in reschedule state
-                            LOGGER.info("in get status");
-                            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-                            try {
-                                LOGGER.info("The number freq " + doctorRegistrationDetails.getClicnicFreq());
-                                UpdateAppointment updateAppointment = new UpdateAppointment(AppointmentStatus.NO_RESCHEDULE.name(), appointmentCode);
-                                Date currentDate = dateFormat.parse(appointmentDetails.getAppointmentDate());
-                                int clinicFreq = Integer.parseInt(doctorRegistrationDetails.getClicnicFreq());
-                                Date newDate = DateUtil.addDays(currentDate, clinicFreq);
-                                appointmentDetails = updateAppointment.updateAppointmentDate(dateFormat.format(newDate));
-                                mtSmsReq.setMessage(MessageExchanger.reschdlSuccessDocInfrmMsg(appointmentDetails, doctorRegistrationDetails));
-                                fireSuccessRespMsgForPatient(smsMtSender, patientRegistrationDetails, appointmentDetails);
-                            } catch (ParseException e) {
-                                e.printStackTrace();
+                        if (patientRegistrationDetails.getdCode().equals(doctorCode)) {
+                            // Doctor has registered to the appointment
+                            if (appointmentDetails.getStatus().equals(AppointmentStatus.PENDING_RESCHEDULE.name())) { // appointment is in reschedule state
+                                LOGGER.info("in get status");
+                                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                                try {
+                                    LOGGER.info("The number freq " + doctorRegistrationDetails.getClicnicFreq());
+                                    UpdateAppointment updateAppointment = new UpdateAppointment(AppointmentStatus.NO_RESCHEDULE.name(), appointmentCode);
+                                    Date currentDate = dateFormat.parse(appointmentDetails.getAppointmentDate());
+                                    int clinicFreq = Integer.parseInt(doctorRegistrationDetails.getClicnicFreq());
+                                    Date newDate = DateUtil.addDays(currentDate, clinicFreq);
+                                    appointmentDetails = updateAppointment.updateAppointmentDate(dateFormat.format(newDate));
+                                    mtSmsReq.setMessage(MessageExchanger.reschdlSuccessDocInfrmMsg(appointmentDetails, doctorRegistrationDetails));
+                                    fireSuccessRespMsgForPatient(smsMtSender, patientRegistrationDetails, appointmentDetails);
+                                } catch (ParseException e) {
+                                    e.printStackTrace();
+                                }
+
+                                // put the date changing code here
+                            } else { // user has not requested to change the appointment
+                                mtSmsReq.setMessage(MessageExchanger.getCannotRescheduleMsg(appointmentDetails, doctorRegistrationDetails.getdName()));
                             }
 
-                            // put the date changing code here
-                        } else { // user has not requested to change the appointment
-                            mtSmsReq.setMessage(MessageExchanger.getCannotRescheduleMsg(appointmentDetails, doctorRegistrationDetails.getdName()));
+                        } else {
+                            mtSmsReq.setMessage(MessageExchanger.getDocNotRegForAppmntMsg());
                         }
+
                     } else { // doctor has not registered with the appointment
                         mtSmsReq.setMessage(MessageExchanger.getDocNotRegForAppmntMsg());
                     }
@@ -224,25 +239,22 @@ public class SimpleClient implements MoSmsListener {
                 LOGGER.info("Doc registered ");
                 AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
                 if (appointmentDetails != null) { // Appointment Exists
-                    GetPatientRegistrationDetails getPatientRegistrationDetails = new GetPatientRegistrationDetails(appointmentCode);
-                    PatientRegistrationDetails patientRegistrationDetails = getPatientRegistrationDetails.getRegistrationDetails();
+                    GetPatientRegistrationDetails getPatientRegistrationDetails = new GetPatientRegistrationDetails(appointmentCode, doctorCode);
+                    PatientRegistrationDetails patientRegistrationDetails = getPatientRegistrationDetails.getRegistrationDetailsByAppCodeAndDCode();
                     LOGGER.info("App exists");
                     if (patientRegistrationDetails != null) {
                         LOGGER.info("doctor ref to appmnt");
                         // Doctor has registered to the appointment
-                        if (appointmentDetails.getStatus().equals(AppointmentStatus.PENDING_RESCHEDULE.name())) { // appointment is in reschedule state
-                            LOGGER.info("in get status");
-                            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-                            LOGGER.info("The number freq " + doctorRegistrationDetails.getClicnicFreq());
-                            UpdateAppointment updateAppointment = new UpdateAppointment(AppointmentStatus.ACTIVE.name(), appointmentCode);
-                            appointmentDetails = updateAppointment.updateAppointmentStatus();
-                            mtSmsReq.setMessage(MessageExchanger.reschdlSuccessDocInfrmMsg(appointmentDetails, doctorRegistrationDetails));
-                            fireRejectRespMsgForPatient(smsMtSender, patientRegistrationDetails, appointmentDetails,doctorRegistrationDetails.getdName());
+                        LOGGER.info("in get status");
+                        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                        LOGGER.info("The number freq " + doctorRegistrationDetails.getClicnicFreq());
+                        UpdateAppointment updateAppointment = new UpdateAppointment(AppointmentStatus.ACTIVE.name(), appointmentCode);
+                        appointmentDetails = updateAppointment.updateAppointmentStatus();
+                        mtSmsReq.setMessage(MessageExchanger.reschdlSuccessDocInfrmMsg(appointmentDetails, doctorRegistrationDetails));
+                        fireRejectRespMsgForPatient(smsMtSender, patientRegistrationDetails, appointmentDetails, doctorRegistrationDetails.getdName());
 
-                            // put the date changing code here
-                        } else { // user has not requested to change the appointment
-                            mtSmsReq.setMessage(MessageExchanger.getCannotRescheduleMsg(appointmentDetails, doctorRegistrationDetails.getdName()));
-                        }
+                        // put the date changing code here
+
                     } else { // doctor has not registered with the appointment
                         mtSmsReq.setMessage(MessageExchanger.getDocNotRegForAppmntMsg());
                     }
@@ -261,7 +273,7 @@ public class SimpleClient implements MoSmsListener {
         return mtSmsReq;
     }
 
-    private void fireRejectRespMsgForPatient(SmsRequestSender smsMtSender, PatientRegistrationDetails patientRegistrationDetails, AppointmentDetails appointmentDetails,String doctorName) {
+    private void fireRejectRespMsgForPatient(SmsRequestSender smsMtSender, PatientRegistrationDetails patientRegistrationDetails, AppointmentDetails appointmentDetails, String doctorName) {
 
         List<String> addressList = new ArrayList<String>();
         addressList.add(patientRegistrationDetails.getdDestination());
@@ -281,7 +293,6 @@ public class SimpleClient implements MoSmsListener {
         } else {
             LOGGER.info("MT SMS message sending failed with status code [" + statusCode + "] " + statusDetails);
         }
-
 
 
     }

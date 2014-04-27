@@ -27,7 +27,7 @@ public class InsertPatientDetails {
     public PatientRegistrationDetails insertPatientRegistrationDetails() {
         Gson gson = new Gson();
         PatientRegistrationDetails patientRegistrationDetails = new PatientRegistrationDetails();
-        GetPatientRegistrationDetails getPatientRegistrationDetails = new GetPatientRegistrationDetails(appCode);
+        GetPatientRegistrationDetails getPatientRegistrationDetails = new GetPatientRegistrationDetails(appCode,dCode);
         LOGGER.info("Getting appointment details : " + appCode);
 
         try {
@@ -42,7 +42,7 @@ public class InsertPatientDetails {
             LOGGER.info("Details are set");
             mongoContextLoader.getMongoOperation().save(patientRegistrationDetails);
             LOGGER.info("Save operation Executed, Getting updated details");
-            patientRegistrationDetails = getPatientRegistrationDetails.getRegistrationDetails();
+            patientRegistrationDetails = getPatientRegistrationDetails.getRegistrationDetailsByAppCode();
             details = gson.toJson(patientRegistrationDetails);
             LOGGER.info("Put Details to DB : " + details);
         } catch (Exception ex) {

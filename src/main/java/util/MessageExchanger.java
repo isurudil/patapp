@@ -89,4 +89,13 @@ public class MessageExchanger {
                 " "+appointmentDetails.getClinicType()+" clinic of Dr."+doctorName+ " on "
                 +appointmentDetails.getAppointmentDate()+" has been rejected. -- A project by I.D Ranaweera - USJP - AS2009500";
     }
+
+    public static String reschdlFailed(AppointmentDetails appointmentDetails){
+        return appointmentDetails.getTitle()+""+appointmentDetails.getpName()+", you already rescheduled your appointment" +
+                " once. You cannot reschedule again. -- A project by I.D Ranaweera - USJP - AS2009500";
+    }
+    public static String reschldPending(AppointmentDetails appointmentDetails){
+        return appointmentDetails.getTitle()+""+appointmentDetails.getpName()+", you have already requested to change the appoinment" +
+                ". Please await for your doctor's feedback. -- A project by I.D Ranaweera - USJP - AS2009500";
+    }
 }

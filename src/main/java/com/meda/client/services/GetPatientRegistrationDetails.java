@@ -12,17 +12,19 @@ import org.springframework.data.mongodb.core.query.Query;
 public class GetPatientRegistrationDetails {
 
     String appCode;
+    String doctorCode;
 
     MongoContextLoader mongoContextLoader =   new MongoContextLoader();
     private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(GetPatientRegistrationDetails.class.getName());
     PatientRegistrationDetails patientRegistrationDetails;
     String details;
 
-    public GetPatientRegistrationDetails(String appCode) {
+    public GetPatientRegistrationDetails(String appCode,String doctorCode) {
         this.appCode = appCode;
+        this.doctorCode = doctorCode;
     }
 
-    public PatientRegistrationDetails getRegistrationDetails(){
+    public PatientRegistrationDetails getRegistrationDetailsByAppCode(){
         Gson gson = new Gson();
         Query searchUserQuery = new Query(Criteria.where("_id").is(appCode));
 
@@ -38,5 +40,24 @@ public class GetPatientRegistrationDetails {
         }
         return patientRegistrationDetails;
     }
+
+    public PatientRegistrationDetails getRegistrationDetailsByAppCodeAndDCode(){
+        Gson gson = new Gson();
+        Query searchUserQuery = new Query(Criteria.where("_id").is(appCode).andOperator(Criteria.where("dCode").is(doctorCode)));
+
+        LOGGER.info("Getting patient details : " + appCode+" and " +doctorCode);
+
+        try{
+            patientRegistrationDetails = mongoContextLoader.getMongoOperation().findOne(searchUserQuery,PatientRegistrationDetails.class);
+            details= gson.toJson(patientRegistrationDetails);
+            LOGGER.info("Got Details from DB : "+details);
+        }catch (Exception ex){
+            ex.printStackTrace();
+
+        }
+        return patientRegistrationDetails;
+    }
+
+
 
 }
