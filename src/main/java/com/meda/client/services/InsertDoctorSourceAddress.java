@@ -22,6 +22,7 @@ public class InsertDoctorSourceAddress {
     String dCode;
     String details;
     Gson gson = new Gson();
+    String dName;
 
     public InsertDoctorSourceAddress(MoSmsReq moSmsReq, String appCode, String dCode) {
         this.moSmsReq = moSmsReq;
@@ -45,6 +46,9 @@ public class InsertDoctorSourceAddress {
                 LOGGER.info("patient details is not null");
                 mongoOperations.updateFirst(updatePatientDetailsQuery, update.set("dDestination", moSmsReq.getSourceAddress()), PatientRegistrationDetails.class);
                 mongoOperations.updateFirst(updatePatientDetailsQuery, update.set("dCode", dCode), PatientRegistrationDetails.class);
+                dName = findDoctor().getdName();
+                mongoOperations.updateFirst(updatePatientDetailsQuery, update.set("dName", dName), PatientRegistrationDetails.class);
+
             }
             else {
                 InsertPatientDetails insertPatientDetails = new InsertPatientDetails(appCode,dCode,moSmsReq.getSourceAddress());
