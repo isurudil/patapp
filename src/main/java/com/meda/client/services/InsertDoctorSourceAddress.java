@@ -1,7 +1,6 @@
 package com.meda.client.services;
 
 import com.google.gson.Gson;
-import com.meda.model.dto.DoctorRegistrationDetails;
 import com.meda.model.dto.PatientRegistrationDetails;
 import config.MongoContextLoader;
 import hms.kite.samples.api.sms.messages.MoSmsReq;
@@ -46,7 +45,7 @@ public class InsertDoctorSourceAddress {
                 LOGGER.info("patient details is not null");
                 mongoOperations.updateFirst(updatePatientDetailsQuery, update.set("dDestination", moSmsReq.getSourceAddress()), PatientRegistrationDetails.class);
                 mongoOperations.updateFirst(updatePatientDetailsQuery, update.set("dCode", dCode), PatientRegistrationDetails.class);
-                dName = findDoctor().getdName();
+                dName = new GetDoctorDetails(dCode).findDoctor().getdName();
                 mongoOperations.updateFirst(updatePatientDetailsQuery, update.set("dName", dName), PatientRegistrationDetails.class);
 
             }
@@ -66,22 +65,4 @@ public class InsertDoctorSourceAddress {
         return patientRegistrationDetails;
     }
 
-    public DoctorRegistrationDetails findDoctor() {
-
-        Query findDoctorQuery = new Query(Criteria.where("_id").is(dCode));
-        DoctorRegistrationDetails doctorRegistrationDetails = null;
-        try {
-
-            MongoOperations mongoOperations = mongoContextLoader.getMongoOperation();
-            LOGGER.info("Finding doctor with id" + dCode);
-            doctorRegistrationDetails = mongoOperations.findOne(findDoctorQuery, DoctorRegistrationDetails.class);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        details = gson.toJson(doctorRegistrationDetails);
-        LOGGER.info("Got Details from Doctor Info  : " + details);
-        return doctorRegistrationDetails;
-
-    }
 }

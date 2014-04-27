@@ -17,6 +17,7 @@ import com.meda.model.dto.AppointmentDetails;
 import com.meda.model.dto.DoctorRegistrationDetails;
 import com.meda.model.dto.PatientRegistrationDetails;
 import util.AppointmentStatus;
+import util.DateUtil;
 import util.MessageExchanger;
 import hms.kite.samples.api.SdpException;
 import hms.kite.samples.api.StatusCodes;
@@ -28,7 +29,10 @@ import hms.kite.samples.api.sms.messages.MtSmsResp;
 
 import javax.servlet.ServletConfig;
 import java.net.URL;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -55,17 +59,13 @@ public class SimpleClient implements MoSmsListener {
             SmsRequestSender smsMtSender = new SmsRequestSender(new URL("http://localhost:7000/sms/send"));
             String[] messageContent = moSmsReq.getMessage().split(" ");
             if (messageContent.length <= 1) {
-                mtSmsReq.setMessage("Invalid Format. Please resend the message as ' med <action> <appointment code> '. " +
-                        "-- A project by I.D Ranaweera - USJP - AS2009500");
+                mtSmsReq.setMessage(MessageExchanger.getInvalidFormatMsg());
 
-            } else if (messageContent.length == 2 && messageContent[1].equals("help")) {
-                mtSmsReq.setMessage("Type ' med view <appointment code> ' to view your registered appointments. \n " +
-                        "Type ' med change <appointment code> ' to request to change your appointment to next clinic date. \n" +
-                        "Type ' med cancel <appointment code> ' to cancel your appointment");
+            } else if (messageContent.length == 2 && messageContent[1].equalsIgnoreCase("help")) {
+                mtSmsReq.setMessage(MessageExchanger.getHelpMsg());
 
-            } else if (messageContent.length == 2 && !messageContent[1].equals("help")) {
-                mtSmsReq.setMessage("Invalid Format. Please resend the message as ' med <action> <appointment code> '. " +
-                        "-- A project by I.D Ranaweera - USJP - AS2009500");
+            } else if (messageContent.length == 2 && !messageContent[1].equalsIgnoreCase("help")) {
+                mtSmsReq.setMessage(MessageExchanger.getInvalidFormatMsg());
             } else {
 
                 action = messageContent[1];
@@ -104,7 +104,7 @@ public class SimpleClient implements MoSmsListener {
     private MtSmsReq createSimpleMtSms(MoSmsReq moSmsReq, SmsRequestSender smsMtSender) {
 
         MtSmsReq mtSmsReq = new MtSmsReq();
-        if (action.equals("view")) {
+        if (action.equalsIgnoreCase("view")) {
             GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
             getAppointmentDetails.setAppCode(appointmentCode);
             AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
@@ -112,10 +112,9 @@ public class SimpleClient implements MoSmsListener {
             if (appointmentDetails != null) {
                 mtSmsReq.setMessage(MessageExchanger.getSchdleSuccessMsg(appointmentDetails));
             } else {
-                mtSmsReq.setMessage(" There are no appointments registered with this appointment code " +
-                        "-- A project by I.D Ranaweera - USJP - AS2009500 ");
+                mtSmsReq.setMessage(MessageExchanger.getAppointmntNotExixtMsg());
             }
-        } else if (action.equals("cancel")) {
+        } else if (action.equalsIgnoreCase("cancel")) {
             DeleteAppointment deleteAppointment = new DeleteAppointment();
 
             LOGGER.log(Level.INFO, "Executing deleting appoinment details");
@@ -124,33 +123,33 @@ public class SimpleClient implements MoSmsListener {
             if (appointmentDetails != null) {
                 mtSmsReq.setMessage(MessageExchanger.getCnclSuccessMsg(appointmentDetails));
             } else {
-                mtSmsReq.setMessage("You are not registered to any clinic. -- A project by I.D Ranaweera - USJP - AS2009500 ");
+                mtSmsReq.setMessage(MessageExchanger.getDocNotRegForAppmntMsg());
             }
-        } else if (action.equals("change")) {
+        } else if (action.equalsIgnoreCase("change")) {
             //Returns the updated document
             GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
-            UpdateAppointmentStatus updateAppointmentStatus = new UpdateAppointmentStatus(AppointmentStatus.PENDING_RESCHEDULE.name(),appointmentCode);
+            UpdateAppointment updateAppointment = new UpdateAppointment(AppointmentStatus.PENDING_RESCHEDULE.name(), appointmentCode);
             getAppointmentDetails.setAppCode(appointmentCode);
             AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
             if (appointmentDetails != null) {
                 // updates the patient_registration document with current source address. If the doc does not has the record returns null
                 PatientRegistrationDetails patientRegistrationDetails = new InsertPatientSourceAddress().insertPatientDestination(moSmsReq, appointmentCode);
                 if (patientRegistrationDetails != null) {
-                    appointmentDetails = updateAppointmentStatus.updateAppointmentStatus();
+                    appointmentDetails = updateAppointment.updateAppointmentStatus();
                     getAppointmentDetails.setAppCode(appointmentCode);
                     mtSmsReq.setMessage(MessageExchanger.getChngReqSuccessMsg(appointmentDetails));
-                    fireDoctorApprovalMsg(smsMtSender,patientRegistrationDetails,appointmentDetails);
+                    fireReqMsgForDoc(smsMtSender, patientRegistrationDetails, appointmentDetails);
 
 
                 } else {
                     // response null means it does not have a record. A record is created when a doctor register to an existing appointment
-                    mtSmsReq.setMessage("Your Doctor has not registered to the SMS service. -- A project by I.D Ranaweera - USJP - AS2009500  ");
+                    mtSmsReq.setMessage(MessageExchanger.getDocNotRegforPatient());
                 }
             } else {
-                mtSmsReq.setMessage("This appointment has not registered with the system -- A project by I.D Ranaweera - USJP - AS2009500  ");
+                mtSmsReq.setMessage(MessageExchanger.getAppointmntNotExixtMsg());
             }
 
-        } else if (action.equals("reg")) {
+        } else if (action.equalsIgnoreCase("reg")) {
             InsertDoctorSourceAddress insertDoctorSourceAddress = new InsertDoctorSourceAddress(moSmsReq, appointmentCode, doctorCode);
             GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
             AppointmentDetails appointmentDetails;
@@ -158,24 +157,93 @@ public class SimpleClient implements MoSmsListener {
             appointmentDetails = getAppointmentDetails.getAppointmentDetails();
 
             if (appointmentDetails != null) {
-                DoctorRegistrationDetails doctorRegistrationDetails = insertDoctorSourceAddress.findDoctor();
+                DoctorRegistrationDetails doctorRegistrationDetails = new GetDoctorDetails(doctorCode).findDoctor();
                 if (doctorRegistrationDetails != null) {
 
                     insertDoctorSourceAddress.insertDoctorSource();
                     mtSmsReq.setMessage(MessageExchanger.getRegSuccessMsg(doctorRegistrationDetails, appointmentDetails));
                 } else {
-                    mtSmsReq.setMessage("You are not registered with the system. -- A project by I.D Ranaweera - USJP - AS2009500");
+                    mtSmsReq.setMessage(MessageExchanger.getDocNotRegMsgforDoc());
                 }
             } else {
 //                mtSmsReq.setMessage("You are not registered with this appointment. Please send" +
 //                        "' med reg <doctor code> <appointment code>' to register with the appointment -- A project by I.D Ranaweera - USJP - AS2009500");
-                mtSmsReq.setMessage("The appointment does not exist. Please check the appointment id.  -- A project by I.D Ranaweera - USJP - AS2009500");
+                mtSmsReq.setMessage(MessageExchanger.getAppointmntNotExixtMsg());
+            }
+        } else if (action.equalsIgnoreCase("ok")) {
+            DoctorRegistrationDetails doctorRegistrationDetails = new GetDoctorDetails(doctorCode).findDoctor();
+            if (doctorRegistrationDetails != null) {  // doctor has registered with the system
+                GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
+                getAppointmentDetails.setAppCode(appointmentCode);
+                LOGGER.info("Doc registered ");
+                AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
+                if (appointmentDetails != null) { // Appointment Exists
+                    GetPatientRegistrationDetails getPatientRegistrationDetails = new GetPatientRegistrationDetails(appointmentCode);
+                    PatientRegistrationDetails patientRegistrationDetails = getPatientRegistrationDetails.getRegistrationDetails();
+                    LOGGER.info("App exists");
+                    if (patientRegistrationDetails != null) {
+                        LOGGER.info("doctor ref to appmnt");
+                     // Doctor has registered to the appointment
+                        if (appointmentDetails.getStatus().equals(AppointmentStatus.PENDING_RESCHEDULE.name())) { // appointment is in reschedule state
+                            LOGGER.info("in get status");
+                            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                            try {
+                                LOGGER.info("The number freq "+doctorRegistrationDetails.getClicnicFreq());
+                                UpdateAppointment updateAppointment = new UpdateAppointment(AppointmentStatus.NO_RESCHEDULE.name(), appointmentCode);
+                                Date currentDate = dateFormat.parse(appointmentDetails.getAppointmentDate());
+                                int clinicFreq = Integer.parseInt(doctorRegistrationDetails.getClicnicFreq());
+                                Date newDate = DateUtil.addDays(currentDate, clinicFreq);
+                                appointmentDetails = updateAppointment.updateAppointmentDate(dateFormat.format(newDate));
+                                mtSmsReq.setMessage(MessageExchanger.reschdlSuccessDocInfrmMsg(appointmentDetails,doctorRegistrationDetails));
+                                fireRespMsgForPatient(smsMtSender,patientRegistrationDetails,appointmentDetails);
+                            } catch (ParseException e) {
+                                e.printStackTrace();
+                            }
+
+                            // put the date changing code here
+                        } else { // user has not requested to change the appointment
+                            mtSmsReq.setMessage(MessageExchanger.getCannotRescheduleMsg(appointmentDetails, doctorRegistrationDetails.getdName()));
+                        }
+                    } else { // doctor has not registered with the appointment
+                        mtSmsReq.setMessage(MessageExchanger.getDocNotRegForAppmntMsg());
+                    }
+
+                } else {   // Appointment does not exist
+                    mtSmsReq.setMessage(MessageExchanger.getAppointmntNotExixtMsg());
+                }
+
+            } else {   // doctor has not registered with the system
+                mtSmsReq.setMessage(MessageExchanger.getDocNotRegMsgforDoc());
             }
         } else {
-            mtSmsReq.setMessage("Invalid action. Please check the action and resend. Type ' med help ' for instructions. " +
-                    "-- A project by I.D Ranaweera - USJP - AS2009500 ");
+            mtSmsReq.setMessage(MessageExchanger.getInvalidActionMsg());
         }
         return mtSmsReq;
+    }
+
+    private void fireRespMsgForPatient(SmsRequestSender smsMtSender, PatientRegistrationDetails registrationDetails
+            , AppointmentDetails appointmentDetails) {
+        List<String> addressList = new ArrayList<String>();
+        addressList.add(registrationDetails.getdDestination());
+        mtSmsReq.setDestinationAddresses(addressList);
+
+        mtSmsReq.setMessage(MessageExchanger.reschdlSuccessPatientMsg(appointmentDetails));
+        MtSmsResp mtSmsResp = null;
+        try {
+            mtSmsResp = smsMtSender.sendSmsRequest(mtSmsReq);
+        } catch (SdpException e) {
+            e.printStackTrace();
+        }
+        String statusCode = mtSmsResp.getStatusCode();
+        String statusDetails = mtSmsResp.getStatusDetail();
+        if (StatusCodes.SuccessK.equals(statusCode)) {
+            LOGGER.info("MT SMS message successfully sent");
+        } else {
+            LOGGER.info("MT SMS message sending failed with status code [" + statusCode + "] " + statusDetails);
+        }
+
+
+
     }
 
     public void fireAtlernateMsg(SmsRequestSender smsMtSender, String dest, Object obj) {
@@ -185,7 +253,7 @@ public class SimpleClient implements MoSmsListener {
         mtSmsReq.setDestinationAddresses(addressList);
         PatientRegistrationDetails patientRegistrationDetails = (PatientRegistrationDetails) obj;
 
-        mtSmsReq.setMessage("Dr."+patientRegistrationDetails.getdName());
+        mtSmsReq.setMessage("Dr." + patientRegistrationDetails.getdName());
         MtSmsResp mtSmsResp = null;
         try {
             mtSmsResp = smsMtSender.sendSmsRequest(mtSmsReq);
@@ -201,16 +269,16 @@ public class SimpleClient implements MoSmsListener {
         }
     }
 
-    public void fireDoctorApprovalMsg(SmsRequestSender smsMtSender,PatientRegistrationDetails registrationDetails
-                                       ,AppointmentDetails appointmentDetails) {
+    public void fireReqMsgForDoc(SmsRequestSender smsMtSender, PatientRegistrationDetails registrationDetails
+            , AppointmentDetails appointmentDetails) {
 
         List<String> addressList = new ArrayList<String>();
         addressList.add(registrationDetails.getdDestination());
         mtSmsReq.setDestinationAddresses(addressList);
 
-        mtSmsReq.setMessage("Dr."+registrationDetails.getdName()+", you patient "+appointmentDetails.getTitle()+"" +
-                ""+appointmentDetails.getpName()+" is requesting to change his date of the "+appointmentDetails.getClinicType()+"" +
-                " clinic on "+appointmentDetails.getAppointmentDate()+". Please reply with the appointment number : "+appointmentDetails.getAppointmentCode()+"" +
+        mtSmsReq.setMessage("Dr." + registrationDetails.getdName() + ", your patient " + appointmentDetails.getTitle() + "" +
+                "" + appointmentDetails.getpName() + " is requesting to change his date of the " + appointmentDetails.getClinicType() + "" +
+                " clinic on " + appointmentDetails.getAppointmentDate() + ". Please reply with the appointment number : " + appointmentDetails.getAppointmentCode() + "" +
                 " -- A project by I.D Ranaweera - USJP - AS2009500");
         MtSmsResp mtSmsResp = null;
         try {
@@ -226,6 +294,7 @@ public class SimpleClient implements MoSmsListener {
             LOGGER.info("MT SMS message sending failed with status code [" + statusCode + "] " + statusDetails);
         }
     }
+
 
 
 }

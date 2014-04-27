@@ -12,6 +12,11 @@ public class DoctorRegistrationDetails {
     @Id
     String _id;
     String dName;
+    String clinicFreq;
+
+    public String getClicnicFreq() {
+        return clinicFreq;
+    }
 
     public String get_id() {
         return _id;
