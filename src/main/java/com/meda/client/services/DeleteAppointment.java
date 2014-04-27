@@ -47,6 +47,7 @@ public class DeleteAppointment {
             isSuccess =true;
         }catch (Exception ex){
              isSuccess = false;
+            ex.printStackTrace();
         }
         return returnObject;
     }

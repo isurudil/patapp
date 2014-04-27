@@ -6,7 +6,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 /**
  * Created by isurud on 4/26/14.
  */
-@Document(collection = "patient_details")
+@Document(collection = "appointment_details")
 public class AppointmentDetails {
 
     @Id

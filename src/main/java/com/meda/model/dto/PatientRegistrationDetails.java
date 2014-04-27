@@ -15,6 +15,22 @@ public class PatientRegistrationDetails {
     String dDestination;
     String dCode;
 
+    public void set_id(String _id) {
+        this._id = _id;
+    }
+
+    public void setpDestination(String pDestination) {
+        this.pDestination = pDestination;
+    }
+
+    public void setdDestination(String dDestination) {
+        this.dDestination = dDestination;
+    }
+
+    public void setdCode(String dCode) {
+        this.dCode = dCode;
+    }
+
     public String get_id() {
         return _id;
     }

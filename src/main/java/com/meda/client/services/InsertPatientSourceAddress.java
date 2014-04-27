@@ -33,6 +33,8 @@ public class InsertPatientSourceAddress {
             if(patientRegistrationDetails != null){
                 mongoOperations.updateFirst(updatePatientDetailsQuery,update.set("pDestination",moSmsReq.getSourceAddress()),PatientRegistrationDetails.class);
                 patientRegistrationDetails = mongoOperations.findOne(updatePatientDetailsQuery,PatientRegistrationDetails.class);
+            }else {
+
             }
             details= gson.toJson(patientRegistrationDetails);
             LOGGER.info("Got Details from DB After Updating  : " + details);

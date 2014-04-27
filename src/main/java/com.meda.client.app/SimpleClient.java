@@ -104,7 +104,9 @@ public class SimpleClient implements MoSmsListener {
 
         MtSmsReq mtSmsReq = new MtSmsReq();
         if (action.equals("view")) {
-            AppointmentDetails appointmentDetails = new GetAppointmentDetails().getAppointmentDetails(appointmentCode);
+            GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
+            getAppointmentDetails.setAppCode(appointmentCode);
+            AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
 
             if (appointmentDetails != null) {
                 mtSmsReq.setMessage(getSchdleSuccessMsg(appointmentDetails));
@@ -127,23 +129,25 @@ public class SimpleClient implements MoSmsListener {
             //Returns the updated document
             PatientRegistrationDetails patientRegistrationDetails = new InsertPatientSourceAddress().insertPatientDestination(moSmsReq, appointmentCode);
             if (patientRegistrationDetails != null) {
-
-                AppointmentDetails appointmentDetails = new GetAppointmentDetails().getAppointmentDetails(appointmentCode);
+                GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
+                getAppointmentDetails.setAppCode(appointmentCode);
+                AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
                 mtSmsReq.setMessage(getChngReqSuccessMsg(appointmentDetails));
 
             } else {
                 mtSmsReq.setMessage("Your Doctor has not registered to the SMS service. -- A project by I.D Ranaweera - USJP - AS2009500  ");
             }
         } else if (action.equals("reg")) {
-            InsertDoctorSourceAddress insertDoctorSourceAddress = new InsertDoctorSourceAddress();
-
+            InsertDoctorSourceAddress insertDoctorSourceAddress = new InsertDoctorSourceAddress(moSmsReq, appointmentCode, doctorCode);
+            GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
             AppointmentDetails appointmentDetails;
-            appointmentDetails = new GetAppointmentDetails().getAppointmentDetails(appointmentCode);
+            getAppointmentDetails.setAppCode(appointmentCode);
+            appointmentDetails = getAppointmentDetails.getAppointmentDetails();
 
             if (appointmentDetails != null) {
-                DoctorRegistrationDetails doctorRegistrationDetails = insertDoctorSourceAddress.findDoctor(doctorCode);
+                DoctorRegistrationDetails doctorRegistrationDetails = insertDoctorSourceAddress.findDoctor();
                 if (doctorRegistrationDetails != null) {
-                    insertDoctorSourceAddress.insertDoctorSource(moSmsReq, appointmentCode, doctorCode);
+                    insertDoctorSourceAddress.insertDoctorSource();
                     mtSmsReq.setMessage(getRegSuccessMsg(doctorRegistrationDetails, appointmentDetails));
                 } else {
                     mtSmsReq.setMessage("You are not registered with the system. -- A project by I.D Ranaweera - USJP - AS2009500");
