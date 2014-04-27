@@ -80,7 +80,13 @@ public class MessageExchanger {
     }
 
     public static String reschdlSuccessDocInfrmMsg(AppointmentDetails appointmentDetails, DoctorRegistrationDetails doctorRegistrationDetails){
-        return "Dr."+doctorRegistrationDetails.getdName()+", your approval has been informed to "+appointmentDetails.getTitle()+""
+        return "Dr."+doctorRegistrationDetails.getdName()+", your feedback on the changing clinic date has been informed to "+appointmentDetails.getTitle()+""
                 +appointmentDetails.getpName()+" -- A project by I.D Ranaweera - USJP - AS2009500";
+    }
+
+    public static String reschdlRejectPatientMsg(AppointmentDetails appointmentDetails,String doctorName) {
+        return appointmentDetails.getTitle()+""+appointmentDetails.getpName()+", your request to change the date the appointment date for the" +
+                " "+appointmentDetails.getClinicType()+" clinic of Dr."+doctorName+ " on "
+                +appointmentDetails.getAppointmentDate()+" has been rejected. -- A project by I.D Ranaweera - USJP - AS2009500";
     }
 }

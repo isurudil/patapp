@@ -183,19 +183,19 @@ public class SimpleClient implements MoSmsListener {
                     LOGGER.info("App exists");
                     if (patientRegistrationDetails != null) {
                         LOGGER.info("doctor ref to appmnt");
-                     // Doctor has registered to the appointment
+                        // Doctor has registered to the appointment
                         if (appointmentDetails.getStatus().equals(AppointmentStatus.PENDING_RESCHEDULE.name())) { // appointment is in reschedule state
                             LOGGER.info("in get status");
                             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
                             try {
-                                LOGGER.info("The number freq "+doctorRegistrationDetails.getClicnicFreq());
+                                LOGGER.info("The number freq " + doctorRegistrationDetails.getClicnicFreq());
                                 UpdateAppointment updateAppointment = new UpdateAppointment(AppointmentStatus.NO_RESCHEDULE.name(), appointmentCode);
                                 Date currentDate = dateFormat.parse(appointmentDetails.getAppointmentDate());
                                 int clinicFreq = Integer.parseInt(doctorRegistrationDetails.getClicnicFreq());
                                 Date newDate = DateUtil.addDays(currentDate, clinicFreq);
                                 appointmentDetails = updateAppointment.updateAppointmentDate(dateFormat.format(newDate));
-                                mtSmsReq.setMessage(MessageExchanger.reschdlSuccessDocInfrmMsg(appointmentDetails,doctorRegistrationDetails));
-                                fireRespMsgForPatient(smsMtSender,patientRegistrationDetails,appointmentDetails);
+                                mtSmsReq.setMessage(MessageExchanger.reschdlSuccessDocInfrmMsg(appointmentDetails, doctorRegistrationDetails));
+                                fireSuccessRespMsgForPatient(smsMtSender, patientRegistrationDetails, appointmentDetails);
                             } catch (ParseException e) {
                                 e.printStackTrace();
                             }
@@ -215,13 +215,78 @@ public class SimpleClient implements MoSmsListener {
             } else {   // doctor has not registered with the system
                 mtSmsReq.setMessage(MessageExchanger.getDocNotRegMsgforDoc());
             }
+        } else if (action.equalsIgnoreCase("reject")) {
+
+            DoctorRegistrationDetails doctorRegistrationDetails = new GetDoctorDetails(doctorCode).findDoctor();
+            if (doctorRegistrationDetails != null) {  // doctor has registered with the system
+                GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
+                getAppointmentDetails.setAppCode(appointmentCode);
+                LOGGER.info("Doc registered ");
+                AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
+                if (appointmentDetails != null) { // Appointment Exists
+                    GetPatientRegistrationDetails getPatientRegistrationDetails = new GetPatientRegistrationDetails(appointmentCode);
+                    PatientRegistrationDetails patientRegistrationDetails = getPatientRegistrationDetails.getRegistrationDetails();
+                    LOGGER.info("App exists");
+                    if (patientRegistrationDetails != null) {
+                        LOGGER.info("doctor ref to appmnt");
+                        // Doctor has registered to the appointment
+                        if (appointmentDetails.getStatus().equals(AppointmentStatus.PENDING_RESCHEDULE.name())) { // appointment is in reschedule state
+                            LOGGER.info("in get status");
+                            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                            LOGGER.info("The number freq " + doctorRegistrationDetails.getClicnicFreq());
+                            UpdateAppointment updateAppointment = new UpdateAppointment(AppointmentStatus.ACTIVE.name(), appointmentCode);
+                            appointmentDetails = updateAppointment.updateAppointmentStatus();
+                            mtSmsReq.setMessage(MessageExchanger.reschdlSuccessDocInfrmMsg(appointmentDetails, doctorRegistrationDetails));
+                            fireRejectRespMsgForPatient(smsMtSender, patientRegistrationDetails, appointmentDetails,doctorRegistrationDetails.getdName());
+
+                            // put the date changing code here
+                        } else { // user has not requested to change the appointment
+                            mtSmsReq.setMessage(MessageExchanger.getCannotRescheduleMsg(appointmentDetails, doctorRegistrationDetails.getdName()));
+                        }
+                    } else { // doctor has not registered with the appointment
+                        mtSmsReq.setMessage(MessageExchanger.getDocNotRegForAppmntMsg());
+                    }
+
+                } else {   // Appointment does not exist
+                    mtSmsReq.setMessage(MessageExchanger.getAppointmntNotExixtMsg());
+                }
+
+            } else {   // doctor has not registered with the system
+                mtSmsReq.setMessage(MessageExchanger.getDocNotRegMsgforDoc());
+            }
+
         } else {
             mtSmsReq.setMessage(MessageExchanger.getInvalidActionMsg());
         }
         return mtSmsReq;
     }
 
-    private void fireRespMsgForPatient(SmsRequestSender smsMtSender, PatientRegistrationDetails registrationDetails
+    private void fireRejectRespMsgForPatient(SmsRequestSender smsMtSender, PatientRegistrationDetails patientRegistrationDetails, AppointmentDetails appointmentDetails,String doctorName) {
+
+        List<String> addressList = new ArrayList<String>();
+        addressList.add(patientRegistrationDetails.getdDestination());
+        mtSmsReq.setDestinationAddresses(addressList);
+
+        mtSmsReq.setMessage(MessageExchanger.reschdlRejectPatientMsg(appointmentDetails, doctorName));
+        MtSmsResp mtSmsResp = null;
+        try {
+            mtSmsResp = smsMtSender.sendSmsRequest(mtSmsReq);
+        } catch (SdpException e) {
+            e.printStackTrace();
+        }
+        String statusCode = mtSmsResp.getStatusCode();
+        String statusDetails = mtSmsResp.getStatusDetail();
+        if (StatusCodes.SuccessK.equals(statusCode)) {
+            LOGGER.info("MT SMS message successfully sent");
+        } else {
+            LOGGER.info("MT SMS message sending failed with status code [" + statusCode + "] " + statusDetails);
+        }
+
+
+
+    }
+
+    private void fireSuccessRespMsgForPatient(SmsRequestSender smsMtSender, PatientRegistrationDetails registrationDetails
             , AppointmentDetails appointmentDetails) {
         List<String> addressList = new ArrayList<String>();
         addressList.add(registrationDetails.getdDestination());
@@ -241,7 +306,6 @@ public class SimpleClient implements MoSmsListener {
         } else {
             LOGGER.info("MT SMS message sending failed with status code [" + statusCode + "] " + statusDetails);
         }
-
 
 
     }
@@ -294,7 +358,6 @@ public class SimpleClient implements MoSmsListener {
             LOGGER.info("MT SMS message sending failed with status code [" + statusCode + "] " + statusDetails);
         }
     }
-
 
 
 }
