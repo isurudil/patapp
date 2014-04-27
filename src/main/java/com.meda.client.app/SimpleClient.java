@@ -127,16 +127,22 @@ public class SimpleClient implements MoSmsListener {
             }
         } else if (action.equals("change")) {
             //Returns the updated document
-            PatientRegistrationDetails patientRegistrationDetails = new InsertPatientSourceAddress().insertPatientDestination(moSmsReq, appointmentCode);
-            if (patientRegistrationDetails != null) {
-                GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
-                getAppointmentDetails.setAppCode(appointmentCode);
-                AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
-                mtSmsReq.setMessage(getChngReqSuccessMsg(appointmentDetails));
+            GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
+            getAppointmentDetails.setAppCode(appointmentCode);
+            AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
+            if(appointmentDetails != null){
+                PatientRegistrationDetails patientRegistrationDetails = new InsertPatientSourceAddress().insertPatientDestination(moSmsReq, appointmentCode);
+                if (patientRegistrationDetails != null) {
+                    getAppointmentDetails.setAppCode(appointmentCode);
+                    mtSmsReq.setMessage(getChngReqSuccessMsg(appointmentDetails));
 
-            } else {
-                mtSmsReq.setMessage("Your Doctor has not registered to the SMS service. -- A project by I.D Ranaweera - USJP - AS2009500  ");
+                } else {
+                    mtSmsReq.setMessage("Your Doctor has not registered to the SMS service. -- A project by I.D Ranaweera - USJP - AS2009500  ");
+                }
+            }else {
+                mtSmsReq.setMessage("This appointment has not registered with the system -- A project by I.D Ranaweera - USJP - AS2009500  ");
             }
+
         } else if (action.equals("reg")) {
             InsertDoctorSourceAddress insertDoctorSourceAddress = new InsertDoctorSourceAddress(moSmsReq, appointmentCode, doctorCode);
             GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
