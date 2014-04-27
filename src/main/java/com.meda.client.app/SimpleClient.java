@@ -12,13 +12,11 @@
  */
 package com.meda.client.app;
 
-import com.meda.client.services.DeleteAppointment;
-import com.meda.client.services.GetAppointmentDetails;
-import com.meda.client.services.InsertDoctorSourceAddress;
-import com.meda.client.services.InsertPatientSourceAddress;
+import com.meda.client.services.*;
 import com.meda.model.dto.AppointmentDetails;
 import com.meda.model.dto.DoctorRegistrationDetails;
 import com.meda.model.dto.PatientRegistrationDetails;
+import util.AppointmentStatus;
 import util.MessageExchanger;
 import hms.kite.samples.api.SdpException;
 import hms.kite.samples.api.StatusCodes;
@@ -131,16 +129,18 @@ public class SimpleClient implements MoSmsListener {
         } else if (action.equals("change")) {
             //Returns the updated document
             GetAppointmentDetails getAppointmentDetails = new GetAppointmentDetails();
+            UpdateAppointmentStatus updateAppointmentStatus = new UpdateAppointmentStatus(AppointmentStatus.PENDING_RESCHEDULE.name(),appointmentCode);
             getAppointmentDetails.setAppCode(appointmentCode);
             AppointmentDetails appointmentDetails = getAppointmentDetails.getAppointmentDetails();
             if (appointmentDetails != null) {
                 // updates the patient_registration document with current source address. If the doc does not has the record returns null
                 PatientRegistrationDetails patientRegistrationDetails = new InsertPatientSourceAddress().insertPatientDestination(moSmsReq, appointmentCode);
                 if (patientRegistrationDetails != null) {
+                    appointmentDetails = updateAppointmentStatus.updateAppointmentStatus();
                     getAppointmentDetails.setAppCode(appointmentCode);
                     mtSmsReq.setMessage(MessageExchanger.getChngReqSuccessMsg(appointmentDetails));
                     fireDoctorApprovalMsg(smsMtSender,patientRegistrationDetails,appointmentDetails);
-                    // !@#
+
 
                 } else {
                     // response null means it does not have a record. A record is created when a doctor register to an existing appointment

@@ -17,6 +17,11 @@ public class AppointmentDetails {
     String dCode;
     String dName;
     String title;
+    String status;
+
+    public String getStatus() {
+        return status;
+    }
 
     public String getTitle() {
         return title;
